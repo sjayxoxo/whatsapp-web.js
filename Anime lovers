@@ -1,0 +1,6006 @@
+mkdir whatsapp-anime-bot
+cd whatsapp-anime-bot
+npm init -y
+npm install @whiskeysockets/baileys axios node-cron
+const { default: makeWASocket, useSingleFileAuthState } = require("@whiskeysockets/baileys");
+const fs = require("fs");
+const axios = require("axios");
+const cron = require("node-cron");
+const { Boom } = require("@hapi/boom");
+
+const { state, saveState } = useSingleFileAuthState("./auth.json");
+
+const pokemonList = [
+    "Pikachu", "Charizard", "Bulbasaur", "Gengar", "Lucario", "Eevee", "Snorlax"
+];
+
+const animeCharacters = [
+    { name: "Naruto Uzumaki", stars: 5 },
+    { name: "Sasuke Uchiha", stars: 6 },
+    { name: "Goku", stars: 7 },
+    { name: "Levi Ackerman", stars: 6 },
+    { name: "Gojo Satoru", stars: 7 },
+    { name: "Deku", stars: 4 },
+    { name: "Itadori Yuji", stars: 5 }
+];
+
+const specialVariants = [
+    "Christmas outfit", "Battle armor", "Festival kimono", "Dark form", "Ultra Instinct", "Hero costume"
+];
+
+function getRandomElement(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function generateDrop() {
+    let dropType = Math.random() < 0.5 ? "pokemon" : "anime";
+    if (dropType === "pokemon") {
+        let pokemon = getRandomElement(pokemonList);
+        return `A wild *${pokemon}* appeared! Type \`catch ${pokemon.toLowerCase()}\` to claim it!`;
+    } else {
+        let base = getRandomElement(animeCharacters);
+        let isSpecial = Math.random() < 0.2; // 20% chance for a special variant
+        let stars = isSpecial ? 8 : base.stars;
+        let specialTag = isSpecial ? ` (${getRandomElement(specialVariants)})` : "";
+        return `A ${stars}★ anime character appeared!\n*${base.name}*${specialTag}\nType \`claim ${base.name.toLowerCase()}\` to collect!`;
+    }
+}
+
+async function startBot() {
+    const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true
+    });
+
+    sock.ev.on("creds.update", saveState);
+
+    // Send random drops every 1 to 5 minutes
+    setInterval(() => {
+        let message = generateDrop();
+        // Replace this with your target group or user ID
+        let chatId = "120xxxxxxxxxx@g.us"; // <- insert your group ID
+        sock.sendMessage(chatId, { text: message });
+    }, Math.floor(Math.random() * 4 + 1) * 60000); // Random interval (1-5 minutes)
+
+    sock.ev.on("messages.upsert", async ({ messages }) => {
+        const msg = messages[0];
+        if (!msg.message || msg.key.fromMe) return;
+
+        const text = msg.message.conversation?.toLowerCase();
+        if (text?.startsWith("catch ")) {
+            const name = text.replace("catch ", "").trim();
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `You caught *${name.charAt(0).toUpperCase() + name.slice(1)}*!`,
+            });
+        } else if (text?.startsWith("claim ")) {
+            const name = text.replace("claim ", "").trim();
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `You claimed *${name.charAt(0).toUpperCase() + name.slice(1)}*!`,
+            });
+        }
+    });
+}
+
+startBot();
+node bot.js
+// pokemon.js
+module.exports = [
+  { name: "Bulbasaur", image: "https://img.pokemondb.net/artwork/large/bulbasaur.jpg", stars: 2 },
+  { name: "Pikachu", image: "https://img.pokemondb.net/artwork/large/pikachu.jpg", stars: 4 },
+  { name: "Charizard", image: "https://img.pokemondb.net/artwork/large/charizard.jpg", stars: 5 },
+  { name: "Mewtwo", image: "https://img.pokemondb.net/artwork/large/mewtwo.jpg", stars: 7 },
+  { name: "Garchomp", image: "https://img.pokemondb.net/artwork/large/garchomp.jpg", stars: 6 },
+  { name: "Rayquaza", image: "https://img.pokemondb.net/artwork/large/rayquaza.jpg", stars: 8 }, // Special Legendary
+  // ...load all 1000+ from an external source later
+];// animeCharacters.js
+module.exports = [
+  { name: "Naruto Uzumaki", image: "https://somecdn.com/naruto.jpg", stars: 6 },
+  { name: "Goku", image: "https://somecdn.com/goku.jpg", stars: 7 },
+  { name: "Levi Ackerman", image: "https://somecdn.com/levi.jpg", stars: 7 },
+  { name: "Luffy", image: "https://somecdn.com/luffy.jpg", stars: 7 },
+  { name: "Nezuko Kamado", image: "https://somecdn.com/nezuko.jpg", stars: 6 },
+  { name: "Light Yagami", image: "https://somecdn.com/light.jpg", stars: 5 },
+  { name: "Killua Zoldyck", image: "https://somecdn.com/killua.jpg", stars: 5 },
+  // Add more — full list possible from AniList API
+];const pokemonList = require('./pokemon');
+const animeCharacters = require('./animeCharacters');
+
+function generateDrop() {
+    let dropType = Math.random() < 0.5 ? "pokemon" : "anime";
+    if (dropType === "pokemon") {
+        let p = getRandomElement(pokemonList);
+        return {
+            text: `A wild ${p.stars}★ *${p.name}* appeared!\nType \`catch ${p.name.toLowerCase()}\` to claim it!`,
+            image: p.image
+        };
+    } else {
+        let base = getRandomElement(animeCharacters);
+        let isSpecial = Math.random() < 0.15;
+        let stars = isSpecial ? 8 : base.stars;
+        let outfit = isSpecial ? ` (${getRandomElement(specialVariants)})` : "";
+        return {
+            text: `${stars}★ Anime character appeared!\n*${base.name}*${outfit}\nType \`claim ${base.name.toLowerCase()}\`!`,
+            image: base.image
+        };
+    }
+}
+let drop = generateDrop();
+sock.sendMessage(chatId, {
+    image: { url: drop.image },
+    caption: drop.text
+});
+[
+  {
+    "name": "Pokemon1",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon2",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon2.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon3",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon3.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon4",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon4.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon5",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon5.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon6",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon6.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon7",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon7.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon8",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon8.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon9",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon9.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon10",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon10.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon11",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon11.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon12",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon12.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon13",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon13.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon14",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon14.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon15",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon15.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon16",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon16.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon17",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon17.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon18",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon18.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon19",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon19.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon20",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon20.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon21",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon21.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon22",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon22.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon23",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon23.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon24",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon24.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon25",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon25.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon26",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon26.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon27",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon27.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon28",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon28.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon29",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon29.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon30",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon30.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon31",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon31.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon32",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon32.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon33",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon33.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon34",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon34.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon35",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon35.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon36",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon36.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon37",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon37.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon38",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon38.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon39",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon39.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon40",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon40.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon41",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon41.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon42",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon42.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon43",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon43.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon44",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon44.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon45",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon45.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon46",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon46.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon47",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon47.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon48",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon48.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon49",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon49.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon50",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon50.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon51",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon51.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon52",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon52.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon53",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon53.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon54",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon54.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon55",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon55.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon56",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon56.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon57",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon57.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon58",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon58.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon59",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon59.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon60",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon60.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon61",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon61.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon62",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon62.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon63",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon63.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon64",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon64.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon65",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon65.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon66",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon66.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon67",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon67.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon68",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon68.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon69",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon69.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon70",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon70.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon71",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon71.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon72",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon72.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon73",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon73.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon74",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon74.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon75",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon75.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon76",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon76.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon77",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon77.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon78",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon78.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon79",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon79.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon80",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon80.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon81",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon81.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon82",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon82.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon83",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon83.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon84",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon84.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon85",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon85.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon86",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon86.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon87",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon87.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon88",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon88.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon89",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon89.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon90",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon90.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon91",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon91.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon92",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon92.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon93",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon93.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon94",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon94.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon95",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon95.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon96",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon96.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon97",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon97.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon98",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon98.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon99",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon99.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon100",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon100.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon101",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon101.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon102",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon102.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon103",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon103.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon104",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon104.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon105",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon105.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon106",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon106.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon107",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon107.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon108",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon108.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon109",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon109.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon110",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon110.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon111",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon111.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon112",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon112.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon113",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon113.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon114",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon114.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon115",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon115.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon116",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon116.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon117",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon117.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon118",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon118.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon119",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon119.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon120",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon120.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon121",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon121.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon122",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon122.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon123",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon123.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon124",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon124.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon125",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon125.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon126",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon126.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon127",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon127.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon128",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon128.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon129",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon129.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon130",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon130.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon131",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon131.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon132",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon132.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon133",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon133.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon134",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon134.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon135",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon135.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon136",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon136.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon137",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon137.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon138",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon138.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon139",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon139.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon140",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon140.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon141",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon141.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon142",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon142.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon143",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon143.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon144",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon144.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon145",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon145.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon146",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon146.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon147",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon147.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon148",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon148.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon149",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon149.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon150",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon150.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon151",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon151.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon152",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon152.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon153",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon153.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon154",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon154.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon155",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon155.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon156",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon156.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon157",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon157.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon158",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon158.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon159",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon159.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon160",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon160.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon161",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon161.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon162",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon162.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon163",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon163.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon164",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon164.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon165",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon165.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon166",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon166.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon167",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon167.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon168",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon168.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon169",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon169.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon170",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon170.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon171",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon171.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon172",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon172.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon173",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon173.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon174",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon174.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon175",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon175.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon176",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon176.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon177",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon177.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon178",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon178.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon179",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon179.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon180",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon180.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon181",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon181.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon182",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon182.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon183",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon183.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon184",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon184.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon185",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon185.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon186",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon186.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon187",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon187.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon188",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon188.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon189",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon189.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon190",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon190.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon191",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon191.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon192",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon192.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon193",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon193.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon194",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon194.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon195",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon195.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon196",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon196.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon197",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon197.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon198",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon198.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon199",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon199.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon200",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon200.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon201",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon201.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon202",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon202.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon203",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon203.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon204",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon204.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon205",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon205.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon206",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon206.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon207",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon207.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon208",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon208.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon209",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon209.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon210",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon210.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon211",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon211.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon212",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon212.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon213",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon213.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon214",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon214.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon215",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon215.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon216",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon216.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon217",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon217.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon218",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon218.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon219",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon219.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon220",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon220.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon221",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon221.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon222",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon222.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon223",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon223.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon224",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon224.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon225",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon225.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon226",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon226.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon227",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon227.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon228",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon228.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon229",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon229.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon230",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon230.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon231",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon231.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon232",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon232.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon233",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon233.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon234",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon234.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon235",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon235.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon236",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon236.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon237",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon237.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon238",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon238.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon239",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon239.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon240",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon240.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon241",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon241.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon242",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon242.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon243",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon243.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon244",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon244.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon245",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon245.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon246",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon246.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon247",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon247.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon248",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon248.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon249",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon249.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon250",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon250.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon251",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon251.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon252",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon252.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon253",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon253.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon254",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon254.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon255",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon255.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon256",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon256.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon257",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon257.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon258",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon258.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon259",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon259.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon260",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon260.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon261",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon261.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon262",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon262.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon263",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon263.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon264",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon264.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon265",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon265.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon266",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon266.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon267",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon267.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon268",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon268.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon269",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon269.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon270",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon270.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon271",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon271.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon272",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon272.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon273",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon273.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon274",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon274.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon275",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon275.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon276",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon276.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon277",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon277.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon278",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon278.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon279",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon279.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon280",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon280.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon281",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon281.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon282",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon282.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon283",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon283.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon284",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon284.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon285",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon285.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon286",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon286.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon287",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon287.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon288",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon288.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon289",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon289.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon290",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon290.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon291",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon291.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon292",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon292.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon293",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon293.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon294",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon294.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon295",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon295.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon296",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon296.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon297",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon297.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon298",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon298.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon299",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon299.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon300",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon300.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon301",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon301.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon302",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon302.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon303",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon303.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon304",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon304.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon305",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon305.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon306",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon306.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon307",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon307.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon308",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon308.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon309",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon309.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon310",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon310.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon311",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon311.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon312",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon312.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon313",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon313.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon314",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon314.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon315",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon315.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon316",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon316.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon317",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon317.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon318",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon318.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon319",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon319.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon320",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon320.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon321",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon321.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon322",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon322.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon323",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon323.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon324",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon324.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon325",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon325.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon326",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon326.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon327",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon327.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon328",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon328.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon329",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon329.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon330",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon330.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon331",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon331.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon332",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon332.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon333",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon333.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon334",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon334.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon335",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon335.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon336",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon336.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon337",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon337.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon338",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon338.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon339",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon339.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon340",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon340.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon341",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon341.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon342",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon342.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon343",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon343.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon344",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon344.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon345",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon345.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon346",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon346.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon347",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon347.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon348",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon348.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon349",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon349.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon350",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon350.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon351",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon351.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon352",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon352.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon353",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon353.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon354",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon354.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon355",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon355.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon356",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon356.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon357",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon357.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon358",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon358.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon359",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon359.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon360",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon360.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon361",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon361.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon362",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon362.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon363",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon363.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon364",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon364.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon365",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon365.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon366",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon366.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon367",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon367.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon368",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon368.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon369",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon369.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon370",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon370.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon371",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon371.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon372",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon372.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon373",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon373.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon374",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon374.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon375",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon375.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon376",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon376.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon377",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon377.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon378",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon378.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon379",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon379.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon380",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon380.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon381",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon381.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon382",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon382.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon383",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon383.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon384",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon384.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon385",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon385.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon386",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon386.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon387",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon387.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon388",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon388.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon389",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon389.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon390",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon390.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon391",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon391.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon392",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon392.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon393",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon393.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon394",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon394.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon395",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon395.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon396",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon396.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon397",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon397.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon398",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon398.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon399",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon399.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon400",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon400.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon401",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon401.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon402",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon402.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon403",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon403.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon404",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon404.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon405",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon405.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon406",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon406.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon407",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon407.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon408",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon408.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon409",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon409.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon410",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon410.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon411",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon411.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon412",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon412.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon413",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon413.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon414",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon414.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon415",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon415.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon416",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon416.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon417",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon417.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon418",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon418.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon419",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon419.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon420",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon420.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon421",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon421.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon422",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon422.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon423",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon423.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon424",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon424.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon425",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon425.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon426",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon426.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon427",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon427.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon428",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon428.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon429",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon429.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon430",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon430.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon431",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon431.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon432",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon432.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon433",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon433.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon434",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon434.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon435",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon435.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon436",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon436.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon437",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon437.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon438",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon438.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon439",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon439.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon440",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon440.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon441",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon441.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon442",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon442.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon443",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon443.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon444",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon444.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon445",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon445.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon446",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon446.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon447",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon447.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon448",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon448.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon449",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon449.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon450",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon450.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon451",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon451.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon452",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon452.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon453",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon453.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon454",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon454.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon455",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon455.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon456",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon456.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon457",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon457.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon458",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon458.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon459",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon459.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon460",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon460.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon461",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon461.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon462",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon462.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon463",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon463.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon464",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon464.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon465",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon465.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon466",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon466.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon467",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon467.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon468",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon468.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon469",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon469.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon470",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon470.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon471",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon471.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon472",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon472.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon473",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon473.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon474",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon474.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon475",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon475.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon476",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon476.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon477",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon477.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon478",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon478.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon479",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon479.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon480",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon480.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon481",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon481.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon482",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon482.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon483",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon483.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon484",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon484.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon485",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon485.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon486",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon486.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon487",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon487.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon488",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon488.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon489",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon489.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon490",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon490.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon491",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon491.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon492",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon492.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon493",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon493.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon494",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon494.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon495",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon495.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon496",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon496.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon497",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon497.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon498",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon498.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon499",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon499.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon500",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon500.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon501",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon501.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon502",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon502.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon503",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon503.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon504",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon504.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon505",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon505.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon506",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon506.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon507",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon507.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon508",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon508.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon509",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon509.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon510",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon510.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon511",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon511.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon512",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon512.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon513",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon513.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon514",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon514.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon515",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon515.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon516",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon516.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon517",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon517.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon518",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon518.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon519",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon519.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon520",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon520.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon521",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon521.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon522",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon522.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon523",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon523.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon524",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon524.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon525",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon525.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon526",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon526.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon527",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon527.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon528",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon528.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon529",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon529.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon530",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon530.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon531",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon531.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon532",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon532.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon533",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon533.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon534",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon534.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon535",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon535.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon536",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon536.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon537",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon537.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon538",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon538.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon539",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon539.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon540",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon540.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon541",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon541.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon542",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon542.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon543",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon543.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon544",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon544.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon545",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon545.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon546",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon546.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon547",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon547.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon548",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon548.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon549",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon549.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon550",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon550.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon551",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon551.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon552",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon552.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon553",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon553.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon554",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon554.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon555",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon555.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon556",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon556.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon557",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon557.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon558",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon558.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon559",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon559.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon560",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon560.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon561",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon561.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon562",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon562.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon563",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon563.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon564",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon564.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon565",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon565.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon566",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon566.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon567",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon567.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon568",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon568.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon569",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon569.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon570",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon570.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon571",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon571.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon572",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon572.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon573",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon573.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon574",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon574.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon575",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon575.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon576",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon576.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon577",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon577.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon578",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon578.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon579",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon579.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon580",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon580.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon581",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon581.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon582",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon582.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon583",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon583.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon584",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon584.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon585",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon585.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon586",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon586.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon587",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon587.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon588",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon588.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon589",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon589.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon590",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon590.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon591",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon591.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon592",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon592.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon593",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon593.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon594",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon594.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon595",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon595.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon596",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon596.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon597",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon597.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon598",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon598.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon599",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon599.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon600",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon600.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon601",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon601.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon602",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon602.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon603",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon603.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon604",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon604.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon605",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon605.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon606",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon606.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon607",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon607.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon608",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon608.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon609",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon609.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon610",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon610.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon611",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon611.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon612",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon612.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon613",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon613.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon614",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon614.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon615",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon615.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon616",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon616.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon617",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon617.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon618",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon618.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon619",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon619.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon620",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon620.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon621",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon621.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon622",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon622.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon623",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon623.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon624",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon624.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon625",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon625.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon626",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon626.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon627",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon627.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon628",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon628.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon629",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon629.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon630",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon630.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon631",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon631.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon632",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon632.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon633",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon633.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon634",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon634.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon635",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon635.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon636",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon636.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon637",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon637.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon638",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon638.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon639",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon639.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon640",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon640.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon641",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon641.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon642",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon642.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon643",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon643.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon644",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon644.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon645",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon645.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon646",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon646.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon647",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon647.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon648",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon648.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon649",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon649.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon650",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon650.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon651",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon651.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon652",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon652.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon653",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon653.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon654",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon654.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon655",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon655.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon656",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon656.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon657",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon657.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon658",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon658.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon659",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon659.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon660",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon660.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon661",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon661.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon662",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon662.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon663",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon663.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon664",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon664.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon665",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon665.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon666",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon666.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon667",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon667.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon668",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon668.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon669",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon669.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon670",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon670.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon671",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon671.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon672",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon672.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon673",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon673.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon674",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon674.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon675",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon675.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon676",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon676.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon677",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon677.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon678",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon678.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon679",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon679.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon680",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon680.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon681",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon681.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon682",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon682.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon683",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon683.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon684",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon684.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon685",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon685.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon686",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon686.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon687",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon687.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon688",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon688.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon689",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon689.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon690",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon690.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon691",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon691.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon692",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon692.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon693",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon693.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon694",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon694.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon695",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon695.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon696",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon696.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon697",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon697.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon698",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon698.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon699",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon699.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon700",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon700.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon701",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon701.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon702",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon702.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon703",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon703.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon704",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon704.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon705",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon705.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon706",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon706.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon707",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon707.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon708",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon708.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon709",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon709.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon710",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon710.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon711",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon711.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon712",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon712.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon713",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon713.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon714",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon714.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon715",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon715.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon716",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon716.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon717",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon717.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon718",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon718.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon719",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon719.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon720",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon720.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon721",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon721.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon722",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon722.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon723",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon723.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon724",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon724.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon725",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon725.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon726",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon726.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon727",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon727.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon728",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon728.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon729",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon729.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon730",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon730.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon731",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon731.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon732",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon732.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon733",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon733.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon734",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon734.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon735",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon735.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon736",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon736.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon737",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon737.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon738",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon738.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon739",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon739.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon740",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon740.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon741",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon741.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon742",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon742.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon743",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon743.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon744",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon744.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon745",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon745.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon746",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon746.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon747",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon747.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon748",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon748.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon749",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon749.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon750",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon750.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon751",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon751.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon752",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon752.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon753",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon753.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon754",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon754.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon755",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon755.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon756",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon756.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon757",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon757.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon758",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon758.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon759",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon759.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon760",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon760.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon761",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon761.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon762",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon762.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon763",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon763.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon764",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon764.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon765",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon765.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon766",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon766.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon767",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon767.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon768",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon768.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon769",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon769.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon770",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon770.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon771",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon771.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon772",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon772.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon773",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon773.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon774",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon774.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon775",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon775.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon776",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon776.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon777",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon777.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon778",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon778.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon779",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon779.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon780",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon780.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon781",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon781.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon782",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon782.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon783",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon783.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon784",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon784.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon785",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon785.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon786",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon786.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon787",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon787.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon788",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon788.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon789",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon789.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon790",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon790.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon791",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon791.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon792",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon792.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon793",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon793.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon794",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon794.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon795",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon795.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon796",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon796.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon797",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon797.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon798",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon798.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon799",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon799.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon800",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon800.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon801",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon801.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon802",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon802.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon803",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon803.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon804",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon804.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon805",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon805.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon806",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon806.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon807",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon807.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon808",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon808.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon809",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon809.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon810",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon810.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon811",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon811.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon812",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon812.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon813",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon813.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon814",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon814.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon815",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon815.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon816",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon816.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon817",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon817.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon818",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon818.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon819",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon819.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon820",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon820.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon821",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon821.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon822",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon822.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon823",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon823.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon824",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon824.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon825",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon825.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon826",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon826.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon827",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon827.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon828",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon828.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon829",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon829.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon830",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon830.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon831",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon831.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon832",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon832.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon833",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon833.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon834",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon834.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon835",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon835.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon836",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon836.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon837",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon837.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon838",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon838.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon839",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon839.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon840",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon840.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon841",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon841.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon842",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon842.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon843",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon843.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon844",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon844.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon845",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon845.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon846",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon846.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon847",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon847.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon848",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon848.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon849",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon849.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon850",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon850.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon851",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon851.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon852",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon852.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon853",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon853.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon854",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon854.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon855",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon855.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon856",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon856.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon857",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon857.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon858",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon858.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon859",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon859.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon860",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon860.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon861",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon861.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon862",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon862.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon863",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon863.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon864",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon864.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon865",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon865.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon866",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon866.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon867",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon867.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon868",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon868.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon869",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon869.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon870",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon870.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon871",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon871.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon872",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon872.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon873",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon873.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon874",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon874.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon875",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon875.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon876",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon876.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon877",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon877.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon878",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon878.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon879",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon879.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon880",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon880.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon881",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon881.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon882",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon882.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon883",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon883.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon884",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon884.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon885",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon885.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon886",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon886.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon887",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon887.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon888",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon888.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon889",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon889.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon890",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon890.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon891",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon891.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon892",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon892.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon893",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon893.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon894",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon894.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon895",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon895.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon896",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon896.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon897",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon897.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon898",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon898.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon899",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon899.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon900",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon900.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon901",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon901.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon902",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon902.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon903",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon903.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon904",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon904.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon905",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon905.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon906",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon906.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon907",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon907.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon908",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon908.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon909",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon909.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon910",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon910.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon911",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon911.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon912",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon912.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon913",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon913.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon914",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon914.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon915",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon915.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon916",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon916.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon917",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon917.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon918",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon918.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon919",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon919.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon920",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon920.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon921",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon921.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon922",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon922.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon923",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon923.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon924",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon924.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon925",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon925.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon926",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon926.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon927",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon927.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon928",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon928.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon929",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon929.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon930",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon930.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon931",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon931.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon932",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon932.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon933",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon933.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon934",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon934.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon935",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon935.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon936",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon936.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon937",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon937.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon938",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon938.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon939",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon939.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon940",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon940.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon941",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon941.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon942",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon942.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon943",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon943.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon944",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon944.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon945",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon945.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon946",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon946.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon947",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon947.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon948",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon948.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon949",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon949.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon950",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon950.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon951",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon951.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon952",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon952.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon953",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon953.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon954",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon954.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon955",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon955.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon956",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon956.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon957",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon957.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon958",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon958.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon959",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon959.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon960",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon960.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon961",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon961.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon962",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon962.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon963",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon963.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon964",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon964.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon965",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon965.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon966",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon966.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon967",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon967.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon968",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon968.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon969",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon969.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon970",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon970.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon971",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon971.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon972",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon972.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon973",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon973.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon974",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon974.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon975",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon975.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon976",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon976.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon977",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon977.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon978",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon978.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon979",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon979.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon980",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon980.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon981",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon981.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon982",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon982.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon983",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon983.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon984",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon984.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon985",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon985.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon986",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon986.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon987",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon987.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon988",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon988.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon989",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon989.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon990",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon990.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon991",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon991.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon992",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon992.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon993",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon993.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon994",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon994.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon995",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon995.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon996",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon996.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon997",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon997.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon998",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon998.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon999",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon999.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon1000",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1000.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon1001",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1001.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon1002",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1002.jpg",
+    "stars": 4
+  },
+  {
+    "name": "Pokemon1003",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1003.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon1004",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1004.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon1005",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1005.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon1006",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1006.jpg",
+    "stars": 1
+  },
+  {
+    "name": "Pokemon1007",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1007.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon1008",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1008.jpg",
+    "stars": 3
+  },
+  {
+    "name": "Pokemon1009",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1009.jpg",
+    "stars": 2
+  },
+  {
+    "name": "Pokemon1010",
+    "image": "https://img.pokemondb.net/artwork/large/pokemon1010.jpg",
+    "stars": 2
+  }
+]
+[
+  {
+    "name": "Goku",
+    "image": "https://someanimecdn.com/goku.jpg",
+    "stars": 7
+  },
+  {
+    "name": "Naruto Uzumaki",
+    "image": "https://someanimecdn.com/naruto_uzumaki.jpg",
+    "stars": 6
+  },
+  {
+    "name": "Levi Ackerman",
+    "image": "https://someanimecdn.com/levi_ackerman.jpg",
+    "stars": 7
+  },
+  {
+    "name": "Luffy",
+    "image": "https://someanimecdn.com/luffy.jpg",
+    "stars": 7
+  },
+  {
+    "name": "Nezuko Kamado",
+    "image": "https://someanimecdn.com/nezuko_kamado.jpg",
+    "stars": 6
+  },
+  {
+    "name": "Light Yagami",
+    "image": "https://someanimecdn.com/light_yagami.jpg",
+    "stars": 5
+  },
+  {
+    "name": "Killua Zoldyck",
+    "image": "https://someanimecdn.com/killua_zoldyck.jpg",
+    "stars": 5
+  },
+  {
+    "name": "Saitama",
+    "image": "https://someanimecdn.com/saitama.jpg",
+    "stars": 6
+  },
+  {
+    "name": "Gojo Satoru",
+    "image": "https://someanimecdn.com/gojo_satoru.jpg",
+    "stars": 7
+  },
+  {
+    "name": "Eren Yeager",
+    "image": "https://someanimecdn.com/eren_yeager.jpg",
+    "stars": 6
+  }
+]
+let drop = generateDrop();
+sock.sendMessage(chatId, {
+    image: { url: drop.image },
+    caption: drop.text
+});
+const { default: makeWASocket, useSingleFileAuthState } = require("@whiskeysockets/baileys");
+const fs = require("fs");
+const axios = require("axios");
+
+const { state, saveState } = useSingleFileAuthState("./auth.json");
+
+const pokemonList = require("./pokemon_full.json");
+const animeCharacters = require("./anime_characters.json");
+
+const specialVariants = [
+    "Christmas Outfit", "Battle Armor", "Festival Kimono",
+    "Dark Form", "Ultra Instinct", "Hero Costume", "Samurai Armor"
+];
+
+function getRandomElement(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function generateDrop() {
+    let dropType = Math.random() < 0.5 ? "pokemon" : "anime";
+    if (dropType === "pokemon") {
+        let p = getRandomElement(pokemonList);
+        return {
+            text: `A wild ${p.stars}★ *${p.name}* appeared!\nType \`catch ${p.name.toLowerCase()}\` to claim it!`,
+            image: p.image
+        };
+    } else {
+        let base = getRandomElement(animeCharacters);
+        let isSpecial = Math.random() < 0.15;
+        let stars = isSpecial ? 8 : base.stars;
+        let outfit = isSpecial ? ` (${getRandomElement(specialVariants)})` : "";
+        return {
+            text: `${stars}★ Anime character appeared!\n*${base.name}*${outfit}\nType \`claim ${base.name.toLowerCase()}\`!`,
+            image: base.image
+        };
+    }
+}
+
+async function startBot() {
+    const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true
+    });
+
+    sock.ev.on("creds.update", saveState);
+
+    // Random drops every 1 to 5 minutes
+    setInterval(() => {
+        let drop = generateDrop();
+        let chatId = "120XXXXXXXX@g.us"; // Replace with your group ID
+        sock.sendMessage(chatId, {
+            image: { url: drop.image },
+            caption: drop.text
+        });
+    }, Math.floor(Math.random() * 4 + 1) * 60000);
+
+    sock.ev.on("messages.upsert", async ({ messages }) => {
+        const msg = messages[0];
+        if (!msg.message || msg.key.fromMe) return;
+
+        const text = msg.message.conversation?.toLowerCase();
+        if (text?.startsWith("catch ")) {
+            const name = text.replace("catch ", "").trim();
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `You caught *${name.charAt(0).toUpperCase() + name.slice(1)}*!`
+            });
+        } else if (text?.startsWith("claim ")) {
+            const name = text.replace("claim ", "").trim();
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `You claimed *${name.charAt(0).toUpperCase() + name.slice(1)}*!`
+            });
+        }
+    });
+}
+
+startBot();
+node bot.js
+/bot
+├── bot.js
+├── commands/
+│   ├── catch.js
+│   ├── claim.js
+│   ├── pokedex.js
+│   ├── collection.js
+│   ├── leaderboard.js
+├── data/
+│   ├── enhanced_player_database.json
+│   ├── pokemon_full.json
+│   ├── anime_characters_with_forms.json
+├── utils/
+│   ├── dropGenerator.js
+│   ├── timeUtils.js
+│   ├── db.js
+whatsapp-pokemon-anime-bot/
+├── bot.js
+├── commands/
+│   ├── catch.js
+│   ├── claim.js
+│   ├── pokedex.js
+│   ├── collection.js
+│   ├── leaderboard.js
+├── data/
+│   ├── enhanced_player_database.json
+│   ├── pokemon_full.json
+│   ├── anime_characters_with_forms.json
+├── utils/
+│   ├── dropGenerator.js
+│   ├── timeUtils.js
+│   ├── db.js
+
+// bot.js - Main Bot Entry
+const fs = require("fs");
+const path = require("path");
+
+// Load utilities
+const { getRandomDrop } = require("./utils/dropGenerator");
+const { isShinyTime } = require("./utils/timeUtils");
+const { loadDB, saveDB, getPlayer, updatePlayerStats } = require("./utils/db");
+
+// Load commands
+const commands = {
+    "!catch": require("./commands/catch"),
+    "!claim": require("./commands/claim"),
+    "!pokedex": require("./commands/pokedex"),
+    "!collection": require("./commands/collection"),
+    "!leaderboard": require("./commands/leaderboard"),
+};
+
+// Load player database
+let playerDB = loadDB();
+
+// Drop cooldown tracker
+let lastDropTime = 0;
+const DROP_INTERVAL = 1000 * 60 * 10; // Every 10 minutes
+
+// Simulate message handler
+function onMessage(message, senderId, senderName) {
+    const [cmd, ...args] = message.split(" ");
+    if (commands[cmd]) {
+        commands[cmd](args, senderId, senderName, playerDB, saveDB);
+    }
+}
+
+// Simulate periodic card drop
+function dropLoop() {
+    const now = Date.now();
+    if (now - lastDropTime > DROP_INTERVAL) {
+        lastDropTime = now;
+
+        const shinyTime = isShinyTime();
+        const drop = getRandomDrop(shinyTime);
+        
+        const message = generateDropMessage(drop);
+        console.log(message); // Send to group
+
+        // Save latest drop for players to claim
+        fs.writeFileSync("data/currentDrop.json", JSON.stringify(drop, null, 2));
+    }
+
+    setTimeout(dropLoop, 60000); // Check every 60 sec
+}
+
+// Drop message builder
+function generateDropMessage(drop) {
+    if (drop.type === "pokemon") {
+        return drop.shiny 
+            ? `✨ **SHINY ALERT!** A wild *Shiny ${drop.name}* has appeared! Type \`!catch\` to catch it!`
+            : `A wild *${drop.name}* appeared! Type \`!catch\` to catch it!`;
+    } else if (drop.type === "anime") {
+        const starIcon = "★".repeat(drop.stars);
+        const animNote = drop.animation ? `Animated: **${drop.animation}**` : "";
+        const rarity = drop.stars >= 8 ? "LEGENDARY Drop!" : drop.stars >= 6 ? "RARE Animated Card!" : "New Card!";
+        return `**${drop.stars}★ ${rarity}**\n*${drop.name} [${drop.variant}]* has arrived!\n${animNote}\nType \`!claim\` to collect!`;
+    }
+}
+
+// Start bot
+console.log("Bot is running...");
+dropLoop();
+
+// Simulated message listener for dev (remove in real bot)
+process.stdin.on("data", data => {
+    const input = data.toString().trim();
+    onMessage(input, "dev_user", "Developer");
+});
+
+// bot.js - Main Bot Entry
+const fs = require("fs");
+const path = require("path");
+const { getRandomDrop } = require("./utils/dropGenerator");
+const { isShinyTime } = require("./utils/timeUtils");
+const { loadDB, saveDB, getPlayer, updatePlayerStats } = require("./utils/db");
+
+const commands = {
+    "!catch": require("./commands/catch"),
+    "!claim": require("./commands/claim"),
+    "!pokedex": require("./commands/pokedex"),
+    "!collection": require("./commands/collection"),
+    "!leaderboard": require("./commands/leaderboard"),
+};
+
+// Load player database
+let playerDB = loadDB();
+
+// Drop cooldown tracker
+let lastDropTime = 0;
+const DROP_INTERVAL = 1000 * 60 * 10; // Every 10 minutes
+
+// Simulate message handler
+function onMessage(message, senderId, senderName) {
+    const [cmd, ...args] = message.split(" ");
+    if (commands[cmd]) {
+        commands[cmd](args, senderId, senderName, playerDB, saveDB);
+    }
+}
+
+// Simulate periodic card drop
+function dropLoop() {
+    const now = Date.now();
+    if (now - lastDropTime > DROP_INTERVAL) {
+        lastDropTime = now;
+
+        const shinyTime = isShinyTime();
+        const drop = getRandomDrop(shinyTime);
+        
+        const message = generateDropMessage(drop);
+        console.log(message); // Send to group
+
+        // Save latest drop for players to claim
+        fs.writeFileSync("data/currentDrop.json", JSON.stringify(drop, null, 2));
+    }
+
+    setTimeout(dropLoop, 60000); // Check every 60 sec
+}
+
+// Drop message builder
+function generateDropMessage(drop) {
+    if (drop.type === "pokemon") {
+        return drop.shiny 
+            ? `✨ **SHINY ALERT!** A wild *Shiny ${drop.name}* has appeared! Type \`!catch\` to catch it!`
+            : `A wild *${drop.name}* appeared! Type \`!catch\` to catch it!`;
+    } else if (drop.type === "anime") {
+        const starIcon = "★".repeat(drop.stars);
+        const animNote = drop.animation ? `Animated: **${drop.animation}**` : "";
+        const rarity = drop.stars >= 8 ? "LEGENDARY Drop!" : drop.stars >= 6 ? "RARE Animated Card!" : "New Card!";
+        return `**${drop.stars}★ ${rarity}**\n*${drop.name} [${drop.variant}]* has arrived!\n${animNote}\nType \`!claim\` to collect!`;
+    }
+}
+
+// Start bot
+console.log("Bot is running...");
+dropLoop();
+
+// Simulated message listener for dev (remove in real bot)
+process.stdin.on("data", data => {
+    const input = data.toString().trim();
+    onMessage(input, "dev_user", "Developer");
+});
+
+const pokemonData = require("../data/pokemon_full.json");
+const animeData = require("../data/anime_characters_with_forms.json");
+
+function getRandomDrop(isShiny) {
+    const isPokemon = Math.random() < 0.5;
+    if (isPokemon) {
+        return getRandomPokemon(isShiny);
+    } else {
+        return getRandomAnimeCharacter();
+    }
+}
+
+function getRandomPokemon(isShiny) {
+    const pokemon = pokemonData[Math.floor(Math.random() * pokemonData.length)];
+    const shiny = isShiny && Math.random() < 0.1; // 10% chance for shiny
+    return {
+        type: "pokemon",
+        name: pokemon.name,
+        shiny,
+        stars: shiny ? 8 : Math.floor(Math.random() * 7) + 1 // Random stars, 8★ for shiny
+    };
+}
+
+function getRandomAnimeCharacter() {
+    const anime = animeData[Math.floor(Math.random() * animeData.length)];
+    const form = anime.forms[Math.floor(Math.random() * anime.forms.length)];
+    return {
+        type: "anime",
+        name: anime.name,
+        variant: form.variant,
+        animation: form.animation,
+        stars: form.stars,
+        shiny: false
+    };
+}
+
+module.exports = { getRandomDrop };
+
+function isShinyTime() {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+
+    // Shiny spawn times: 3:00 AM–4:30 AM, 11:11 PM, Full Moon
+    if ((hours === 3 && minutes >= 0 && minutes <= 30) || hours === 23 && minutes === 11) {
+        return true;
+    }
+    return false;
+}
+
+module.exports = { isShinyTime };
+
+const fs = require("fs");
+const path = require("path");
+
+const dbPath = path.join(__dirname, "../data/enhanced_player_database.json");
+
+function loadDB() {
+    if (!fs.existsSync(dbPath)) {
+        return {};
+    }
+    const data = fs.readFileSync(dbPath);
+    return JSON.parse(data);
+}
+
+function saveDB(db) {
+    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+}
+
+function getPlayer(playerId, db) {
+    if (!db.players[playerId]) {
+        db.players[playerId] = { 
+            name: "Unknown", 
+            caught: [], 
+            claimed: [], 
+            stats: { total_pokemon: 0, total_anime: 0, eight_star_anime: 0, total_stars: 0 }
+        };
+    }
+    return db.players[playerId];
+}
+
+function updatePlayerStats(playerId, db) {
+    const player = db.players[playerId];
+    player.stats.total_pokemon = player.caught.length;
+    player.stats.total_anime = player.claimed.length;
+    player.stats.total_stars = player.caught.reduce((sum, p) => sum + p.stars, 0) + player.claimed.reduce((sum, a) => sum + a.stars, 0);
+    player.stats.eight_star_anime = player.claimed.filter(a => a.stars === 8).length;
+}
+
+module.exports = { loadDB, saveDB, getPlayer, updatePlayerStats };
+
+module.exports = function catchPokemon(args, playerId, playerName, playerDB, saveDB) {
+    const drop = JSON.parse(fs.readFileSync("data/currentDrop.json"));
+    if (drop.type !== "pokemon") return;
+
+    const player = playerDB.players[playerId];
+    const alreadyCaught = player.caught.some(p => p.name === drop.name);
+    if (alreadyCaught) {
+        console.log(`${playerName} has already caught ${drop.name}`);
+        return;
+    }
+
+    player.caught.push({ name: drop.name, stars: drop.stars });
+    updatePlayerStats(playerId, playerDB);
+    saveDB(playerDB);
+
+    console.log(`${playerName} caught ${drop.name}`);
+};
+
+[{"name": "Pikachu"}, {"name": "Charizard"}, {"name": "Mewtwo"}]
+
+[{"name": "Goku", "forms": [{"variant": "Base Form", "stars": 5}, {"variant": "Super Saiyan", "stars": 6}]}]
+
+module.exports = function catchPokemon(args, playerId, playerName, playerDB, saveDB) {
+    // Expecting the player to type `!catch <pokemon_name>`
+    const pokemonName = args.join(" ");
+    if (!pokemonName) {
+        console.log(`${playerName} tried to catch a Pokémon without specifying a name.`);
+        return;
+    }
+
+    const drop = JSON.parse(fs.readFileSync("data/currentDrop.json"));
+
+    if (drop.type !== "pokemon" || drop.name.toLowerCase() !== pokemonName.toLowerCase()) {
+        console.log(`${playerName} tried to catch a wrong Pokémon: ${pokemonName}.`);
+        return;
+    }
+
+    const player = playerDB.players[playerId];
+    const alreadyCaught = player.caught.some(p => p.name.toLowerCase() === drop.name.toLowerCase());
+
+    if (alreadyCaught) {
+        console.log(`${playerName} has already caught ${drop.name}.`);
+        return;
+    }
+
+    player.caught.push({ name: drop.name, stars: drop.stars });
+    updatePlayerStats(playerId, playerDB);
+    saveDB(playerDB);
+
+    console.log(`${playerName} caught ${drop.name}!`);
+};
+
+// bot.js - Main Bot Entry (partial, only message handling part)
+function onMessage(message, senderId, senderName) {
+    const [cmd, ...args] = message.split(" ");
+    if (commands[cmd]) {
+        commands[cmd](args, senderId, senderName, playerDB, saveDB);
+    }
+}
+
+!catch Pikachu
+
+[
+    {
+        "name": "Goku",
+        "forms": [
+            {
+                "variant": "Base Form",
+                "animation": "Base Animation",
+                "stars": 5
+            },
+            {
+                "variant": "Super Saiyan",
+                "animation": "Super Saiyan Aura",
+                "stars": 6
+            },
+            {
+                "variant": "Super Saiyan Blue",
+                "animation": "Blue Aura",
+                "stars": 7
+            },
+            {
+                "variant": "Ultra Instinct",
+                "animation": "Ultra Instinct Aura",
+                "stars": 8
+            }
+        ]
+    },
+    {
+        "name": "Naruto Uzumaki",
+        "forms": [
+            {
+                "variant": "Base Form",
+                "animation": "Base Animation",
+                "stars": 5
+            },
+            {
+                "variant": "Sage Mode",
+                "animation": "Sage Aura",
+                "stars": 6
+            },
+            {
+                "variant": "Kurama Mode",
+                "animation": "Kurama Chakra",
+                "stars": 7
+            },
+            {
+                "variant": "Baryon Mode",
+                "animation": "Baryon Aura",
+                "stars": 8
+            }
+        ]
+    },
+    {
+        "name": "Sailor Moon",
+        "forms": [
+            {
+                "variant": "Base Form",
+                "animation": "Base Animation",
+                "stars": 5
+            },
+            {
+                "variant": "Sailor Moon Crystal",
+                "animation": "Crystal Aura",
+                "stars": 6
+            },
+            {
+                "variant": "Super Sailor Moon",
+                "animation": "Super Aura",
+                "stars": 7
+            },
+            {
+                "variant": "Eternal Sailor Moon",
+                "animation": "Eternal Aura",
+                "stars": 8
+            }
+        ]
+    },
+    {
+        "name": "Luffy",
+        "forms": [
+            {
+                "variant": "Base Form",
+                "animation": "Base Animation",
+                "stars": 5
+            },
+            {
+                "variant": "Gear 2",
+                "animation": "Gear 2 Flame",
+                "stars": 6
+            },
+            {
+                "variant": "Gear 4",
+                "animation": "Gear 4 Bouncing",
+                "stars": 7
+            },
+            {
+                "variant": "Gear 5",
+                "animation": "Gear 5 Toonstorm",
+                "stars": 8
+            }
+        ]
+    },
+    {
+        "name": "Saitama",
+        "forms": [
+            {
+                "variant": "Base Form",
+                "animation": "Base Animation",
+                "stars": 5
+            },
+            {
+                "variant": "Serious Mode",
+                "animation": "Serious Aura",
+                "stars": 7
+            }
+        ]
+    }
+]
+
+[
+    {
+        "name": "Pikachu",
+        "forms": [
+            {
+                "variant": "Base Form",
+                "stars": 5
+            },
+            {
+                "variant": "Alola Form",
+                "stars": 6
+            },
+            {
+                "variant": "Shiny",
+                "stars": 8
+            }
+        ]
+    },
+    {
+        "name": "Charizard",
+        "forms": [
+            {
+                "variant": "Base Form",
+                "stars": 6
+            },
+            {
+                "variant": "Mega X",
+                "stars": 7
+            },
+            {
+                "variant": "Mega Y",
+                "stars": 7
+            },
+            {
+                "variant": "Shiny",
+                "stars": 8
+            }
+        ]
+    },
+    {
+        "name": "Mewtwo",
+        "forms": [
+            {
+                "variant": "Base Form",
+                "stars": 7
+            },
+            {
+                "variant": "Mega Mewtwo X",
+                "stars": 8
+            },
+            {
+                "variant": "Mega Mewtwo Y",
+                "stars": 8
+            }
+        ]
+    }
+]
+
+[
+  {
+    "name": "Pikachu",
+    "type": "Electric",
+    "star_rating": 5,
+    "shiny": false,
+    "special_outfit": null
+  },
+  {
+    "name": "Charizard",
+    "type": "Fire/Flying",
+    "star_rating": 7,
+    "shiny": true,
+    "special_outfit": null
+  },
+  {
+    "name": "Mewtwo",
+    "type": "Psychic",
+    "star_rating": 8,
+    "shiny": false,
+    "special_outfit": null
+  },
+  {
+    "name": "Eevee",
+    "type": "Normal",
+    "star_rating": 4,
+    "shiny": false,
+    "special_outfit": null
+  },
+  {
+    "name": "Snorlax",
+    "type": "Normal",
+    "star_rating": 6,
+    "shiny": true,
+    "special_outfit": null
+  }
+]
+
+[
+  {
+    "name": "Lamperouge Lelouch",
+    "anime": "Code Geass: Hangyaku no Lelouch",
+    "star_rating": 8,
+    "shiny": false,
+    "special_outfit": "Emperor's outfit",
+    "animation": "Lelouch in his final battle stance"
+  },
+  {
+    "name": "Levi",
+    "anime": "Shingeki no Kyojin",
+    "star_rating": 7,
+    "shiny": true,
+    "special_outfit": "Survey Corps uniform",
+    "animation": "Levi charging in battle"
+  },
+  {
+    "name": "Monkey D. Luffy",
+    "anime": "One Piece",
+    "star_rating": 6,
+    "shiny": false,
+    "special_outfit": "Gear 4th form",
+    "animation": "Luffy using Gum-Gum Pistol"
+  },
+  {
+    "name": "Roronoa Zoro",
+    "anime": "One Piece",
+    "star_rating": 6,
+    "shiny": false,
+    "special_outfit": "Duel-wielding swords",
+    "animation": "Zoro performing a three-sword style attack"
+  },
+  {
+    "name": "Yagami Light",
+    "anime": "Death Note",
+    "star_rating": 7,
+    "shiny": false,
+    "special_outfit": "Shinigami eyes",
+    "animation": "Light holding the Death Note, smiling darkly"
+  },
+  {
+    "name": "Kaneki Ken",
+    "anime": "Tokyo Ghoul",
+    "star_rating": 8,
+    "shiny": true,
+    "special_outfit": "Ghoul mask",
+    "animation": "Kaneki using his kagune in battle"
+  },
+  {
+    "name": "Saitama",
+    "anime": "One Punch Man",
+    "star_rating": 5,
+    "shiny": false,
+    "special_outfit": "Hero costume",
+    "animation": "Saitama delivering a powerful punch"
+  },
+  {
+    "name": "Zero Two",
+    "anime": "Darling in the FranXX",
+    "star_rating": 7,
+    "shiny": false,
+    "special_outfit": "Franchise outfit",
+    "animation": "Zero Two transforming into her franxx"
+  },
+  {
+    "name": "Rem",
+    "anime": "Re:Zero kara Hajimeru Isekai Seikatsu",
+    "star_rating": 8,
+    "shiny": true,
+    "special_outfit": "Maid uniform",
+    "animation": "Rem smiling while holding a weapon"
+  },
+  {
+    "name": "Uchiha Itachi",
+    "anime": "Naruto",
+    "star_rating": 7,
+    "shiny": false,
+    "special_outfit": "Akatsuki cloak",
+    "animation": "Itachi performing the Tsukuyomi"
+  }
+]
+
+import random
+
+def get_random_pokemon():
+    pokemon_list = [
+        {"name": "Pikachu", "star_rating": 5, "shiny": False},
+        {"name": "Charizard", "star_rating": 7, "shiny": True},
+        {"name": "Mewtwo", "star_rating": 8, "shiny": False},
+        # Add other Pokémon here
+    ]
+    return random.choice(pokemon_list)
+
+def get_random_anime_character():
+    anime_list = [
+        {"name": "Lamperouge Lelouch", "star_rating": 8, "shiny": False},
+        {"name": "Levi", "star_rating": 7, "shiny": True},
+        {"name": "Monkey D. Luffy", "star_rating": 6, "shiny": False},
+        # Add other anime characters here
+    ]
+    return random.choice(anime_list)
+
+{
+  "user_id": "12345",
+  "pokedex": [
+    {"name": "Pikachu", "star_rating": 5},
+    {"name": "Mewtwo", "star_rating": 8}
+  ],
+  "anime_collection": [
+    {"name": "Levi", "star_rating": 7}
+  ]
+}
+
+def handle_command(command, user_id):
+    if command == "!pokedex":
+        user_data = get_user_data(user_id)
+        return f"Your Pokedex: {user_data['pokedex']}"
+    elif command == "!collection":
+        user_data = get_user_data(user_id)
+        return f"Your Anime Collection: {user_data['anime_collection']}"
+    elif command == "!leaderboard":
+        return get_leaderboard()
+
+if pokemon["shiny"]:
+    return f"🎉 A shiny {pokemon['name']} appeared! 🌟 It's a {pokemon['star_rating']}★ Pokémon!"
+else:
+    return f"A {pokemon['name']} appeared! It's a {pokemon['star_rating']}★ Pokémon."
+
+from twilio.rest import Client
+
+def send_whatsapp_message(to, message):
+    client = Client("ACCOUNT_SID", "AUTH_TOKEN")
+    message = client.messages.create(
+        body=message,
+        from_='whatsapp:+14155238886',
+        to=f'whatsapp:{to}'
+    )
+    return message.sid
+
